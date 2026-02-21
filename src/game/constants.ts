@@ -27,15 +27,15 @@ export const WEAPONS: Record<string, any> = {
   flamethrower: { type: 'flamethrower', ammo: 100, maxAmmo: 100, fireRate: 50, reloadTime: 2000, damage: 5, cost: 500, unlocked: false },
   sniper: { type: 'sniper', ammo: 5, maxAmmo: 5, fireRate: 1500, reloadTime: 2000, damage: 100, cost: 1000, unlocked: false },
   cryobeam: { 
-    type: 'cryobeam', ammo: 50, maxAmmo: 50, fireRate: 100, reloadTime: 2000, damage: 8, cost: 10000, unlocked: false,
+    type: 'cryobeam', ammo: 50, maxAmmo: 50, fireRate: 100, reloadTime: 2000, damage: 8, cost: 5000, unlocked: false,
     abilityName: 'Freeze', abilityCooldown: 15000, lastAbilityTime: 0 
   },
   teslacannon: { 
-    type: 'teslacannon', ammo: 20, maxAmmo: 20, fireRate: 400, reloadTime: 2500, damage: 25, cost: 10000, unlocked: false,
+    type: 'teslacannon', ammo: 20, maxAmmo: 20, fireRate: 400, reloadTime: 2500, damage: 25, cost: 5000, unlocked: false,
     abilityName: 'Overload', abilityCooldown: 10000, lastAbilityTime: 0 
   },
   voidlauncher: { 
-    type: 'voidlauncher', ammo: 10, maxAmmo: 10, fireRate: 1000, reloadTime: 3000, damage: 50, cost: 10000, unlocked: false,
+    type: 'voidlauncher', ammo: 10, maxAmmo: 10, fireRate: 1000, reloadTime: 3000, damage: 50, cost: 5000, unlocked: false,
     abilityName: 'Black Hole', abilityCooldown: 20000, lastAbilityTime: 0 
   },
 };

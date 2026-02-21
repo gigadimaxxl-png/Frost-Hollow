@@ -60,8 +60,8 @@ export const GameCanvas: React.FC = () => {
   const socketRef = useRef<Socket | null>(null);
   const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
   const [roomInput, setRoomInput] = useState('');
-  const [keys, setKeys] = useState<Set<string>>(new Set());
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const keysRef = useRef<Set<string>>(new Set());
+  const mousePosRef = useRef({ x: 0, y: 0 });
   const [waveMessage, setWaveMessage] = useState<string | null>(null);
   const t = TRANSLATIONS[gameState.language];
   const lastFireTime = useRef(0);
@@ -168,33 +168,6 @@ export const GameCanvas: React.FC = () => {
     }
   }, [gameState.wave, gameState.waveCooldown]);
 
-  // Input handling
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => setKeys(prev => new Set(prev).add(e.key.toLowerCase()));
-    const handleKeyUp = (e: KeyboardEvent) => setKeys(prev => {
-      const next = new Set(prev);
-      next.delete(e.key.toLowerCase());
-      return next;
-    });
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      setMousePos({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, []);
-
   const shoot = useCallback(() => {
     const now = Date.now();
     const weapon = gameState.player.weapons[gameState.player.currentWeapon];
@@ -206,7 +179,7 @@ export const GameCanvas: React.FC = () => {
 
     setGameState(prev => {
       const currentWeapon = prev.player.weapons[prev.player.currentWeapon];
-      const angle = Math.atan2(mousePos.y - prev.player.y, mousePos.x - prev.player.x);
+      const angle = Math.atan2(mousePosRef.current.y - prev.player.y, mousePosRef.current.x - prev.player.x);
       const newBullets: Bullet[] = [];
       
       if (prev.player.currentWeapon === 'shotgun') {
@@ -263,7 +236,7 @@ export const GameCanvas: React.FC = () => {
         bullets: [...prev.bullets, ...newBullets],
       };
     });
-  }, [gameState.isGameOver, gameState.isShopOpen, gameState.player.currentWeapon, gameState.player.weapons, gameState.player.isReloading, mousePos]);
+  }, [gameState.isGameOver, gameState.isShopOpen, gameState.player.currentWeapon, gameState.player.weapons, gameState.player.isReloading]);
 
   const useAbility = useCallback(() => {
     const now = Date.now();
@@ -332,28 +305,62 @@ export const GameCanvas: React.FC = () => {
     });
   }, [gameState.isGameOver, gameState.player.scrap]);
 
+  // Input handling
   useEffect(() => {
-    if (gameState.isGameOver) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      keysRef.current.add(key);
 
-    if (keys.has('e')) placeTrap();
-    if (keys.has(' ')) useAbility();
-    if (keys.has('b') && !gameState.isPaused) setGameState(prev => ({ ...prev, isShopOpen: !prev.isShopOpen }));
-    if (keys.has('escape')) setGameState(prev => ({ 
-      ...prev, 
-      isPaused: !prev.isPaused,
-      isShopOpen: false // Close shop if pausing
-    }));
-    
-    if (!gameState.isPaused && !gameState.isShopOpen) {
-      if (keys.has('1')) setGameState(prev => ({ ...prev, player: { ...prev.player, currentWeapon: 'shotgun' } }));
-      if (keys.has('2')) setGameState(prev => prev.player.weapons.rifle.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'rifle' } }) : prev);
-      if (keys.has('3')) setGameState(prev => prev.player.weapons.flamethrower.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'flamethrower' } }) : prev);
-      if (keys.has('4')) setGameState(prev => prev.player.weapons.sniper.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'sniper' } }) : prev);
-      if (keys.has('5')) setGameState(prev => prev.player.weapons.cryobeam.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'cryobeam' } }) : prev);
-      if (keys.has('6')) setGameState(prev => prev.player.weapons.teslacannon.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'teslacannon' } }) : prev);
-      if (keys.has('7')) setGameState(prev => prev.player.weapons.voidlauncher.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'voidlauncher' } }) : prev);
-    }
-  }, [keys, placeTrap, useAbility, gameState.isGameOver, gameState.isPaused, gameState.isShopOpen]);
+      if (gameState.isGameOver) return;
+
+      // One-shot actions
+      if (key === 'b' && !gameState.isPaused) {
+        setGameState(prev => ({ ...prev, isShopOpen: !prev.isShopOpen }));
+      }
+      if (key === 'escape') {
+        setGameState(prev => ({ 
+          ...prev, 
+          isPaused: !prev.isPaused,
+          isShopOpen: false 
+        }));
+      }
+      if (key === 'e') placeTrap();
+      if (key === ' ') useAbility();
+
+      // Weapon switching
+      if (!gameState.isPaused && !gameState.isShopOpen) {
+        if (key === '1') setGameState(prev => ({ ...prev, player: { ...prev.player, currentWeapon: 'shotgun' } }));
+        if (key === '2') setGameState(prev => prev.player.weapons.rifle.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'rifle' } }) : prev);
+        if (key === '3') setGameState(prev => prev.player.weapons.flamethrower.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'flamethrower' } }) : prev);
+        if (key === '4') setGameState(prev => prev.player.weapons.sniper.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'sniper' } }) : prev);
+        if (key === '5') setGameState(prev => prev.player.weapons.cryobeam.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'cryobeam' } }) : prev);
+        if (key === '6') setGameState(prev => prev.player.weapons.teslacannon.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'teslacannon' } }) : prev);
+        if (key === '7') setGameState(prev => prev.player.weapons.voidlauncher.unlocked ? ({ ...prev, player: { ...prev.player, currentWeapon: 'voidlauncher' } }) : prev);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysRef.current.delete(e.key.toLowerCase());
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      mousePosRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [placeTrap, useAbility, gameState.isGameOver, gameState.isPaused, gameState.isShopOpen]);
 
   // Game Loop
   useEffect(() => {
@@ -366,16 +373,20 @@ export const GameCanvas: React.FC = () => {
         const next = { ...prev };
         
         // Update Player Position
-        let dx = 0;
-        let dy = 0;
-        if (keys.has('w')) dy -= PLAYER_SPEED;
-        if (keys.has('s')) dy += PLAYER_SPEED;
-        if (keys.has('a')) dx -= PLAYER_SPEED;
-        if (keys.has('d')) dx += PLAYER_SPEED;
+        let moveX = 0;
+        let moveY = 0;
+        if (keysRef.current.has('w')) moveY -= 1;
+        if (keysRef.current.has('s')) moveY += 1;
+        if (keysRef.current.has('a')) moveX -= 1;
+        if (keysRef.current.has('d')) moveX += 1;
 
-        next.player.x = Math.max(next.player.radius, Math.min(GAME_WIDTH - next.player.radius, next.player.x + dx));
-        next.player.y = Math.max(next.player.radius, Math.min(GAME_HEIGHT - next.player.radius, next.player.y + dy));
-        next.player.angle = Math.atan2(mousePos.y - next.player.y, mousePos.x - next.player.x);
+        if (moveX !== 0 || moveY !== 0) {
+          const length = Math.sqrt(moveX * moveX + moveY * moveY);
+          next.player.x = Math.max(next.player.radius, Math.min(GAME_WIDTH - next.player.radius, next.player.x + (moveX / length) * PLAYER_SPEED));
+          next.player.y = Math.max(next.player.radius, Math.min(GAME_HEIGHT - next.player.radius, next.player.y + (moveY / length) * PLAYER_SPEED));
+        }
+        
+        next.player.angle = Math.atan2(mousePosRef.current.y - next.player.y, mousePosRef.current.x - next.player.x);
 
         // Emit player update
         if (next.roomId) {
@@ -598,7 +609,7 @@ export const GameCanvas: React.FC = () => {
 
     animationFrameId = requestAnimationFrame(update);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [keys, mousePos]);
+  }, []);
 
   // Rendering
   useEffect(() => {
